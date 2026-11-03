@@ -81,7 +81,7 @@ builder.Services.AddAuthorization(options =>
 // ---------- 3C: Current user info (used for record ownership + audit) ----------
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-
+builder.Services.AddScoped<ICustomerService, CustomerService>();
 var app = builder.Build();
 
 // Create roles + test users (Part 2B)

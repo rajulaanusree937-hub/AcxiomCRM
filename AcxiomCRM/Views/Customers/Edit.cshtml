@@ -1,0 +1,34 @@
+﻿@model CustomerFormViewModel
+@{
+    ViewData["Title"] = "Edit Customer";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0"><i class="bi bi-pencil-square me-2"></i>Edit Customer</h1>
+        <span class="badge bg-light text-dark border">@Model.CustomerCode</span>
+    </div>
+    <a asp-action="Details" asp-route-id="@Model.CustomerId" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back to details
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="Edit" asp-route-id="@Model.CustomerId" method="post" novalidate>
+            <input type="hidden" asp-for="CustomerId" />
+            <input type="hidden" asp-for="CustomerCode" />
+
+            <partial name="_CustomerForm" model="Model" />
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save changes</button>
+                <a asp-action="Details" asp-route-id="@Model.CustomerId" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
