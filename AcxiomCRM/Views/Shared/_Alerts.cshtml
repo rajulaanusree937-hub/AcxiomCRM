@@ -1,0 +1,22 @@
+﻿@{
+    var alerts = new[]
+    {
+        new { Key = "Success", Css = "success", Icon = "bi-check-circle" },
+        new { Key = "Error",   Css = "danger",  Icon = "bi-exclamation-octagon" },
+        new { Key = "Warning", Css = "warning", Icon = "bi-exclamation-triangle" },
+        new { Key = "Info",    Css = "info",    Icon = "bi-info-circle" }
+    };
+}
+
+@foreach (var alert in alerts)
+{
+    var message = TempData[alert.Key] as string;
+    if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert alert-@alert.Css alert-dismissible fade show d-flex align-items-center" role="alert">
+            <i class="bi @alert.Icon me-2"></i>
+            <div>@message</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+}

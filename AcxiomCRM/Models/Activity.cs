@@ -3,7 +3,7 @@ using AcxiomCRM.Models.Enums;
 
 namespace AcxiomCRM.Models;
 
-public class Activity
+public class Activity : IOwnedEntity
 {
     public int ActivityId { get; set; }
 

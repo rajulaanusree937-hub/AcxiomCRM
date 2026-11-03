@@ -3,7 +3,7 @@ using AcxiomCRM.Models.Enums;
 
 namespace AcxiomCRM.Models;
 
-public class FollowUp
+public class FollowUp : IOwnedEntity
 {
     public int FollowUpId { get; set; }
 

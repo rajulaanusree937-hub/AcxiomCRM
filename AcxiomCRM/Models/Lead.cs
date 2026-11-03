@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace AcxiomCRM.Models;
 
-public class Lead
+public class Lead : IOwnedEntity
 {
     public int LeadId { get; set; }
 

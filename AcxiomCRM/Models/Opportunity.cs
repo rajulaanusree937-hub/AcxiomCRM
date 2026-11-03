@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AcxiomCRM.Models;
 
-public class Opportunity
+public class Opportunity : IOwnedEntity
 {
     public int OpportunityId { get; set; }
 

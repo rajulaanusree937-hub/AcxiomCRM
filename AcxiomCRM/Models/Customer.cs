@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace AcxiomCRM.Models;
 
-public class Customer
+public class Customer : IOwnedEntity
 {
     public int CustomerId { get; set; }
 
