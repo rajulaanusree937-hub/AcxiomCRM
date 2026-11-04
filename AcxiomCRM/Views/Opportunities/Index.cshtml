@@ -1,0 +1,184 @@
+﻿@model OpportunityListViewModel
+@{
+    ViewData["Title"] = "Opportunities";
+    var canSeeAll = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+
+    string StageBadge(OpportunityStage s) => s switch
+    {
+        OpportunityStage.Qualification => "bg-info text-dark",
+        OpportunityStage.Proposal => "bg-primary",
+        OpportunityStage.Negotiation => "bg-warning text-dark",
+        OpportunityStage.Won => "bg-success",
+        OpportunityStage.Lost => "bg-danger",
+        _ => "bg-light text-dark"
+    };
+
+    Dictionary<string, string> RouteFor(int page) => new()
+    {
+        ["search"] = Model.Search ?? "",
+        ["customerId"] = Model.CustomerId?.ToString() ?? "",
+        ["stage"] = Model.Stage?.ToString() ?? "",
+        ["status"] = Model.Status?.ToString() ?? "",
+        ["assignedTo"] = Model.AssignedTo ?? "",
+        ["sortBy"] = Model.SortBy,
+        ["page"] = page.ToString()
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+        <h1 class="h3 mb-0"><i class="bi bi-briefcase me-2"></i>Opportunities</h1>
+        <small class="text-muted">
+            @Model.TotalCount opportunity(ies) · Total ₹@Model.TotalAmount.ToString("N2") · Weighted ₹@Model.TotalWeighted.ToString("N2")
+        </small>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Pipeline" class="btn btn-outline-primary"><i class="bi bi-kanban"></i> Pipeline view</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Opportunity</a>
+    </div>
+</div>
+
+<form method="get" asp-action="Index" class="card card-body shadow-sm mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Search</label>
+            <input name="search" value="@Model.Search" class="form-control" placeholder="Opportunity or customer name" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Customer</label>
+            <select name="customerId" class="form-select">
+                <option value="">Any</option>
+                @foreach (var c in Model.CustomerOptions)
+                {
+                    <option value="@c.Value" selected="@c.Selected">@c.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Stage</label>
+            <select name="stage" class="form-select">
+                <option value="">All</option>
+                @foreach (var s in Enum.GetValues<OpportunityStage>())
+                {
+                    <option value="@s" selected="@(Model.Stage == s)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                @foreach (var s in Enum.GetValues<OpportunityStatus>())
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Sort by</label>
+            <select name="sortBy" class="form-select">
+                <option value="close_asc" selected="@(Model.SortBy == "close_asc")">Closing soonest</option>
+                <option value="amount_desc" selected="@(Model.SortBy == "amount_desc")">Highest amount</option>
+                <option value="newest" selected="@(Model.SortBy == "newest")">Newest</option>
+                <option value="name" selected="@(Model.SortBy == "name")">Name A–Z</option>
+            </select>
+        </div>
+        @if (canSeeAll)
+        {
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Owner</label>
+                <select name="assignedTo" class="form-select">
+                    <option value="">Anyone</option>
+                    @foreach (var u in Model.AssignedUsers)
+                    {
+                        <option value="@u.Value" selected="@u.Selected">@u.Text</option>
+                    }
+                </select>
+            </div>
+        }
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-primary flex-fill"><i class="bi bi-search"></i> Filter</button>
+            <a asp-action="Index" class="btn btn-outline-secondary" title="Clear"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    @if (!Model.Items.Any())
+    {
+        <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>No opportunities found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Opportunity</th>
+                        <th>Customer</th>
+                        <th>Stage</th>
+                        <th class="text-end">Amount (₹)</th>
+                        <th class="text-end">Prob.</th>
+                        <th class="text-end">Weighted (₹)</th>
+                        <th>Expected Close</th>
+                        @if (canSeeAll)
+                        {
+                            <th>Owner</th>
+                        }
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in Model.Items)
+                    {
+                        var overdue = o.Status == OpportunityStatus.Open && o.ExpectedCloseDate < DateTime.Today;
+                        <tr>
+                            <td class="fw-semibold">@o.OpportunityName</td>
+                            <td><a asp-controller="Customers" asp-action="Details" asp-route-id="@o.CustomerId">@o.CustomerName</a></td>
+                            <td><span class="badge @StageBadge(o.Stage)">@o.Stage</span></td>
+                            <td class="text-end">@o.Amount.ToString("N2")</td>
+                            <td class="text-end">@o.Probability%</td>
+                            <td class="text-end">@o.WeightedAmount.ToString("N2")</td>
+                            <td class="@(overdue ? "text-danger fw-semibold" : "")">@o.ExpectedCloseDate.ToString("dd MMM yyyy")</td>
+                            @if (canSeeAll)
+                            {
+                                <td>@(o.AssignedToName ?? "Unassigned")</td>
+                            }
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@o.OpportunityId" class="btn btn-sm btn-outline-secondary" title="Details"><i class="bi bi-eye"></i></a>
+                                @if (o.Status == OpportunityStatus.Open)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@o.OpportunityId" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                }
+                                <a asp-action="Delete" asp-route-id="@o.OpportunityId" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                <small class="text-muted">Page @Model.Page of @Model.TotalPages</small>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.HasPrevious ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page - 1)">Previous</a>
+                    </li>
+                    @for (var p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(p)">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page + 1)">Next</a>
+                    </li>
+                </ul>
+            </div>
+        }
+    }
+</div>

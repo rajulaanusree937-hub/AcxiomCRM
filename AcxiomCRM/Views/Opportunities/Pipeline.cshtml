@@ -1,0 +1,62 @@
+﻿@model PipelineViewModel
+@{
+    ViewData["Title"] = "Sales Pipeline";
+
+    string HeaderColor(OpportunityStage s) => s switch
+    {
+        OpportunityStage.Qualification => "bg-info-subtle",
+        OpportunityStage.Proposal => "bg-primary-subtle",
+        OpportunityStage.Negotiation => "bg-warning-subtle",
+        OpportunityStage.Won => "bg-success-subtle",
+        OpportunityStage.Lost => "bg-danger-subtle",
+        _ => "bg-light"
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+        <h1 class="h3 mb-0"><i class="bi bi-kanban me-2"></i>Sales Pipeline</h1>
+        <small class="text-muted">
+            Open pipeline ₹@Model.OpenPipelineAmount.ToString("N2") · Weighted ₹@Model.OpenWeightedAmount.ToString("N2")
+        </small>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-list-ul"></i> List view</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Opportunity</a>
+    </div>
+</div>
+
+<div class="d-flex gap-3 overflow-auto pb-2">
+    @foreach (var col in Model.Columns)
+    {
+        <div class="card shadow-sm flex-shrink-0" style="width: 260px;">
+            <div class="card-header @HeaderColor(col.Stage)">
+                <div class="d-flex justify-content-between">
+                    <span class="fw-semibold">@col.Stage</span>
+                    <span class="badge bg-dark">@col.Items.Count</span>
+                </div>
+                <small class="text-muted">₹@col.TotalAmount.ToString("N0") · wtd ₹@col.TotalWeighted.ToString("N0")</small>
+            </div>
+            <div class="card-body p-2 d-flex flex-column gap-2" style="min-height: 200px;">
+                @if (!col.Items.Any())
+                {
+                    <div class="text-muted small text-center mt-3">No opportunities</div>
+                }
+                @foreach (var o in col.Items)
+                {
+                    <a asp-action="Details" asp-route-id="@o.OpportunityId" class="card text-decoration-none text-dark border">
+                        <div class="card-body p-2">
+                            <div class="fw-semibold small">@o.OpportunityName</div>
+                            <div class="small text-muted">@o.CustomerName</div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span>₹@o.Amount.ToString("N0")</span>
+                                <span class="text-muted">@o.Probability%</span>
+                            </div>
+                            <div class="small text-muted">Close: @o.ExpectedCloseDate.ToString("dd MMM")</div>
+                        </div>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+</div>
