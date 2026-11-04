@@ -1,78 +1,198 @@
-﻿@{
+﻿@model DashboardViewModel
+@{
     ViewData["Title"] = "Dashboard";
+    var isAdmin = User.IsInRole(AppRoles.Admin);
+    var isManager = User.IsInRole(AppRoles.Manager);
+    var scope = isAdmin ? "All records" : isManager ? "Team pipeline" : "Your assigned records";
+
+    string Money(decimal v) => "₹" + v.ToString("N0");
+
+    var cards = new[]
+    {
+        new { Title = "Total Customers",      Value = Model.TotalCustomers.ToString(),     Icon = "bi-people",          Color = "primary",   Link = Url.Action("Index", "Customers") },
+        new { Title = "Total Leads",          Value = Model.TotalLeads.ToString(),         Icon = "bi-person-plus",     Color = "info",      Link = Url.Action("Index", "Leads") },
+        new { Title = "Open Leads",           Value = Model.OpenLeads.ToString(),          Icon = "bi-hourglass-split", Color = "warning",   Link = Url.Action("Index", "Leads") },
+        new { Title = "Total Opportunities",  Value = Model.TotalOpportunities.ToString(), Icon = "bi-briefcase",       Color = "secondary", Link = Url.Action("Index", "Opportunities") },
+        new { Title = "Open Opportunities",   Value = Model.OpenOpportunities.ToString(),  Icon = "bi-graph-up-arrow",  Color = "primary",   Link = Url.Action("Index", "Opportunities", new { status = "Open" }) },
+        new { Title = "Won Opportunities",    Value = Model.WonOpportunities.ToString(),   Icon = "bi-trophy",          Color = "success",   Link = Url.Action("Index", "Opportunities", new { stage = "Won" }) },
+        new { Title = "Lost Opportunities",   Value = Model.LostOpportunities.ToString(),  Icon = "bi-x-circle",        Color = "danger",    Link = Url.Action("Index", "Opportunities", new { stage = "Lost" }) },
+        new { Title = "Total Pipeline Value", Value = Money(Model.TotalPipelineValue),     Icon = "bi-currency-rupee",  Color = "dark",      Link = Url.Action("Pipeline", "Opportunities") }
+    };
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
     <div>
         <h1 class="h3 mb-0">Dashboard</h1>
-        <small class="text-muted">Sales overview for your authorized scope</small>
+        <small class="text-muted">@scope · @Model.PeriodLabel</small>
     </div>
 
-    @* Date filter (4.3) — wired up in Step 12 *@
-    <div class="btn-group" role="group" aria-label="Date filter">
-        <button type="button" class="btn btn-outline-primary btn-sm">Today</button>
-        <button type="button" class="btn btn-outline-primary btn-sm">This Week</button>
-        <button type="button" class="btn btn-outline-primary btn-sm active">This Month</button>
-        <button type="button" class="btn btn-outline-primary btn-sm">Custom Range</button>
-    </div>
+    @* ---------- Date filter (4.3) ---------- *@
+    <form method="get" asp-action="Index" class="d-flex flex-wrap gap-2 align-items-center">
+        <div class="btn-group btn-group-sm" role="group">
+            <a asp-action="Index" asp-route-period="today" class="btn btn-outline-primary @(Model.Period == "today" ? "active" : "")">Today</a>
+            <a asp-action="Index" asp-route-period="week" class="btn btn-outline-primary @(Model.Period == "week" ? "active" : "")">This Week</a>
+            <a asp-action="Index" asp-route-period="month" class="btn btn-outline-primary @(Model.Period == "month" ? "active" : "")">This Month</a>
+        </div>
+        <input type="hidden" name="period" value="custom" />
+        <input type="date" name="from" class="form-control form-control-sm" style="width:auto"
+               value="@(Model.Period == "custom" ? Model.From.ToString("yyyy-MM-dd") : "")" />
+        <input type="date" name="to" class="form-control form-control-sm" style="width:auto"
+               value="@(Model.Period == "custom" ? Model.To.AddDays(-1).ToString("yyyy-MM-dd") : "")" />
+        <button type="submit" class="btn btn-sm btn-primary @(Model.Period == "custom" ? "active" : "")">Custom Range</button>
+    </form>
 </div>
 
 @* ---------- KPI cards (17.11) ---------- *@
-<div class="row g-3 mb-4">
-    @{
-        var cards = new[]
-        {
-            new { Title = "Total Customers",      Icon = "bi-people",          Color = "primary"   },
-            new { Title = "Total Leads",          Icon = "bi-person-plus",     Color = "info"      },
-            new { Title = "Open Leads",           Icon = "bi-hourglass-split", Color = "warning"   },
-            new { Title = "Total Opportunities",  Icon = "bi-briefcase",       Color = "secondary" },
-            new { Title = "Open Opportunities",   Icon = "bi-graph-up-arrow",  Color = "primary"   },
-            new { Title = "Won Opportunities",    Icon = "bi-trophy",          Color = "success"   },
-            new { Title = "Lost Opportunities",   Icon = "bi-x-circle",        Color = "danger"    },
-            new { Title = "Total Pipeline Value", Icon = "bi-currency-rupee",  Color = "dark"      }
-        };
-    }
-
+<div class="row g-3 mb-3">
     @foreach (var card in cards)
     {
         <div class="col-6 col-md-4 col-xl-3">
-            <div class="card shadow-sm h-100 border-0 border-start border-4 border-@card.Color">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-muted small">@card.Title</div>
-                        <div class="fs-4 fw-semibold">—</div>
+            <a href="@card.Link" class="text-decoration-none text-dark">
+                <div class="card shadow-sm h-100 border-0 border-start border-4 border-@card.Color">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small">@card.Title</div>
+                            <div class="fs-4 fw-semibold">@card.Value</div>
+                        </div>
+                        <i class="bi @card.Icon fs-2 text-@card.Color opacity-75"></i>
                     </div>
-                    <i class="bi @card.Icon fs-2 text-@card.Color opacity-75"></i>
                 </div>
-            </div>
+            </a>
         </div>
     }
 </div>
 
-@* ---------- Charts (17.12) — Chart.js added in Step 12 ---------- *@
-<div class="row g-3">
+@* ---------- Period summary ---------- *@
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2 d-flex flex-wrap gap-4 small">
+        <span><i class="bi bi-calendar3 me-1"></i><strong>@Model.PeriodLabel:</strong></span>
+        <span>New leads: <strong>@Model.NewLeadsInPeriod</strong></span>
+        <span>New customers: <strong>@Model.NewCustomersInPeriod</strong></span>
+        <span>Won value: <strong>@Money(Model.WonValueInPeriod)</strong></span>
+        <span>Weighted pipeline: <strong>@Money(Model.WeightedPipelineValue)</strong></span>
+        <span>Pending follow-ups: <strong>@Model.PendingFollowUps</strong></span>
+        <span class="@(Model.OverdueFollowUps > 0 ? "text-danger" : "")">Overdue: <strong>@Model.OverdueFollowUps</strong></span>
+    </div>
+</div>
+
+@* ---------- Admin statistics (4.3) ---------- *@
+@if (Model.ShowAdminStats)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3"><div class="card shadow-sm"><div class="card-body py-2"><div class="small text-muted">Active users</div><div class="fs-5 fw-semibold">@Model.ActiveUsers</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="card shadow-sm"><div class="card-body py-2"><div class="small text-muted">Inactive users</div><div class="fs-5 fw-semibold">@Model.InactiveUsers</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="card shadow-sm"><div class="card-body py-2"><div class="small text-muted">Locked accounts</div><div class="fs-5 fw-semibold text-danger">@Model.LockedUsers</div></div></div></div>
+        <div class="col-6 col-md-3"><a asp-controller="AuditLogs" asp-action="Index" asp-route-action="LoginFailed" class="text-decoration-none text-dark"><div class="card shadow-sm"><div class="card-body py-2"><div class="small text-muted">Failed logins (@Model.PeriodLabel)</div><div class="fs-5 fw-semibold text-warning">@Model.FailedLoginsInPeriod</div></div></div></a></div>
+    </div>
+}
+
+@* ---------- Charts (17.12) ---------- *@
+<div class="row g-3 mb-3">
     <div class="col-lg-4">
         <div class="card shadow-sm h-100">
             <div class="card-header bg-white fw-semibold">Lead Status</div>
-            <div class="card-body d-flex align-items-center justify-content-center text-muted" style="min-height:250px">
-                Chart coming in Step 12
-            </div>
+            <div class="card-body"><canvas id="leadStatusChart" height="240"></canvas></div>
         </div>
     </div>
     <div class="col-lg-4">
         <div class="card shadow-sm h-100">
             <div class="card-header bg-white fw-semibold">Opportunity Pipeline</div>
-            <div class="card-body d-flex align-items-center justify-content-center text-muted" style="min-height:250px">
-                Chart coming in Step 12
-            </div>
+            <div class="card-body"><canvas id="pipelineChart" height="240"></canvas></div>
         </div>
     </div>
     <div class="col-lg-4">
         <div class="card shadow-sm h-100">
-            <div class="card-header bg-white fw-semibold">Monthly Sales</div>
-            <div class="card-body d-flex align-items-center justify-content-center text-muted" style="min-height:250px">
-                Chart coming in Step 12
-            </div>
+            <div class="card-header bg-white fw-semibold">Monthly Sales (Won vs Lost)</div>
+            <div class="card-body"><canvas id="monthlyChart" height="240"></canvas></div>
         </div>
     </div>
 </div>
+
+@* ---------- Upcoming follow-ups ---------- *@
+<div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between">
+        <span class="fw-semibold">Upcoming Follow-Ups</span>
+        <a asp-controller="FollowUps" asp-action="Index" asp-route-view="upcoming" class="small">View all</a>
+    </div>
+    @if (!Model.UpcomingFollowUps.Any())
+    {
+        <div class="card-body text-muted small">No upcoming follow-ups.</div>
+    }
+    else
+    {
+        <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>Date</th><th>Subject</th><th>Type</th><th>Related To</th></tr></thead>
+            <tbody>
+                @foreach (var f in Model.UpcomingFollowUps)
+                {
+                    <tr>
+                        <td class="text-nowrap">@f.FollowUpDate.ToString("dd MMM, hh:mm tt")</td>
+                        <td><a asp-controller="FollowUps" asp-action="Details" asp-route-id="@f.FollowUpId">@f.Subject</a></td>
+                        <td>@f.FollowUpType</td>
+                        <td><small class="text-muted">@f.RelatedType:</small> @f.RelatedName</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        // Data comes from the server and is already filtered to the user's scope
+        const leadLabels = @Json.Serialize(Model.LeadStatusLabels);
+        const leadCounts = @Json.Serialize(Model.LeadStatusCounts);
+        const stageLabels = @Json.Serialize(Model.PipelineLabels);
+        const stageAmounts = @Json.Serialize(Model.PipelineAmounts);
+        const stageCounts = @Json.Serialize(Model.PipelineCounts);
+        const monthLabels = @Json.Serialize(Model.MonthlyLabels);
+        const monthWon = @Json.Serialize(Model.MonthlyWon);
+        const monthLost = @Json.Serialize(Model.MonthlyLost);
+
+        // 1. Lead Status — doughnut
+        new Chart(document.getElementById('leadStatusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: leadLabels,
+                datasets: [{
+                    data: leadCounts,
+                    backgroundColor: ['#0d6efd', '#0dcaf0', '#198754', '#6c757d', '#dc3545', '#212529']
+                }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+
+        // 2. Opportunity Pipeline — bar (amount per stage, count in tooltip)
+        new Chart(document.getElementById('pipelineChart'), {
+            type: 'bar',
+            data: {
+                labels: stageLabels,
+                datasets: [{
+                    label: 'Amount (₹)', data: stageAmounts,
+                    backgroundColor: ['#0dcaf0', '#0d6efd', '#ffc107', '#198754', '#dc3545']
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { afterLabel: ctx => 'Opportunities: ' + stageCounts[ctx.dataIndex] } }
+                },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // 3. Monthly Sales — line (won vs lost)
+        new Chart(document.getElementById('monthlyChart'), {
+            type: 'line',
+            data: {
+                labels: monthLabels,
+                datasets: [
+                    { label: 'Won (₹)', data: monthWon, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,.15)', fill: true, tension: .3 },
+                    { label: 'Lost (₹)', data: monthLost, borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,.10)', fill: true, tension: .3 }
+                ]
+            },
+            options: { plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+        });
+    </script>
+}

@@ -1,0 +1,37 @@
+﻿@model List<ReportDefinition>
+@{
+    ViewData["Title"] = "Reports";
+}
+
+<h1 class="h3 mb-1"><i class="bi bi-bar-chart me-2"></i>Reports</h1>
+<p class="text-muted mb-4">All reports show only data you are authorized to see. Filter, sort, page and export to CSV.</p>
+
+<div class="row g-3">
+    @foreach (var r in Model)
+    {
+        <div class="col-md-6 col-xl-4">
+            <a asp-action="Show" asp-route-id="@r.Key" class="text-decoration-none text-dark">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body d-flex gap-3">
+                        <i class="bi @r.Icon fs-2 text-primary"></i>
+                        <div>
+                            <div class="fw-semibold">
+                                @r.Title
+                                @if (r.AdminOnly)
+                                {
+                                    <span class="badge bg-dark ms-1">Admin</span>
+                                }
+                                else if (r.ManagerOrAdminOnly)
+                                {
+
+                                    <span class="badge bg-primary ms-1">Manager/Admin</span>
+                                }
+                            </div>
+                            <small class="text-muted">@r.Description</small>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    }
+</div>

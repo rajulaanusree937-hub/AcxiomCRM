@@ -1,0 +1,178 @@
+﻿@model ReportViewModel
+@{
+    ViewData["Title"] = Model.Title;
+
+    string Fmt(object? v, string kind) => v switch
+    {
+        null => "—",
+        decimal d when kind == "money" => "₹" + d.ToString("N2"),
+        decimal d when kind == "percent" => d.ToString("0.#") + "%",
+        DateTime dt when kind == "date" => dt.ToString("dd MMM yyyy"),
+        DateTime dt => dt.ToString("dd MMM yyyy, hh:mm tt"),
+        _ => v.ToString() ?? ""
+    };
+
+    Dictionary<string, string> Route(int page, string? sortBy = null, bool? desc = null) => new()
+    {
+        ["id"] = Model.Key,
+        ["dateFrom"] = Model.DateFrom?.ToString("yyyy-MM-dd") ?? "",
+        ["dateTo"] = Model.DateTo?.ToString("yyyy-MM-dd") ?? "",
+        ["owner"] = Model.Owner ?? "",
+        ["status"] = Model.Status ?? "",
+        ["search"] = Model.Search ?? "",
+        ["groupBy"] = Model.GroupBy ?? "",
+        ["sortBy"] = sortBy ?? Model.SortBy ?? "",
+        ["desc"] = (desc ?? Model.Desc).ToString().ToLower(),
+        ["page"] = page.ToString()
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+        <h1 class="h3 mb-0">@Model.Title</h1>
+        <small class="text-muted">@Model.Description</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Export" asp-all-route-data="Route(1)" class="btn btn-success"><i class="bi bi-filetype-csv"></i> Export CSV</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> All reports</a>
+    </div>
+</div>
+
+@* ---------- Filters ---------- *@
+<form method="get" asp-action="Show" asp-route-id="@Model.Key" class="card card-body shadow-sm mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">@Model.DateFieldLabel from</label>
+            <input type="date" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">to</label>
+            <input type="date" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        @if (Model.StatusOptions.Any())
+        {
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Status / Stage</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    @foreach (var s in Model.StatusOptions)
+                    {
+                        <option value="@s" selected="@(Model.Status == s)">@s</option>
+                    }
+                </select>
+            </div>
+        }
+        @if (Model.ShowOwnerFilter)
+        {
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Owner / User</label>
+                <select name="owner" class="form-select">
+                    <option value="">Anyone</option>
+                    @foreach (var o in Model.OwnerOptions)
+                    {
+                        <option value="@o.Value" selected="@o.Selected">@o.Text</option>
+                    }
+                </select>
+            </div>
+        }
+        @if (Model.ShowGroupBy)
+        {
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Group by</label>
+                <select name="groupBy" class="form-select">
+                    <option value="stage" selected="@(Model.GroupBy == "stage")">Stage</option>
+                    <option value="owner" selected="@(Model.GroupBy == "owner")">Owner</option>
+                </select>
+            </div>
+        }
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Search</label>
+            <input name="search" value="@Model.Search" class="form-control" placeholder="Any column" />
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-primary flex-fill"><i class="bi bi-funnel"></i> Apply</button>
+            <a asp-action="Show" asp-route-id="@Model.Key" class="btn btn-outline-secondary" title="Clear"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </div>
+</form>
+
+@* ---------- Summary ---------- *@
+@if (Model.Summary.Any())
+{
+    <div class="row g-3 mb-3">
+        @foreach (var s in Model.Summary)
+        {
+            <div class="col-6 col-md">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body py-2">
+                        <div class="small text-muted">@s.Key</div>
+                        <div class="fs-5 fw-semibold">@s.Value</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* ---------- Table (click a header to sort) ---------- *@
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    @foreach (var c in Model.Columns)
+                    {
+                        var isSorted = Model.SortBy == c.Key;
+                        var nextDesc = isSorted && !Model.Desc;
+                        var alignEnd = c.Kind is "money" or "number" or "percent";
+                        <th class="@(alignEnd ? "text-end" : "") text-nowrap">
+                            <a asp-action="Show" asp-all-route-data="Route(1, c.Key, nextDesc)" class="text-decoration-none text-dark">
+                                @c.Header
+                                @if (isSorted)
+                                {
+                                    <i class="bi @(Model.Desc ? "bi-caret-down-fill" : "bi-caret-up-fill")"></i>
+                                }
+                            </a>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Rows.Any())
+                {
+                    <tr><td colspan="@Model.Columns.Count" class="text-center text-muted py-4">No data for these filters.</td></tr>
+                }
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        @for (var i = 0; i < Model.Columns.Count; i++)
+                        {
+                            var c = Model.Columns[i];
+                            <td class="@(c.Kind is "money" or "number" or "percent" ? "text-end" : "")">@Fmt(row[i], c.Kind)</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+            <small class="text-muted">@Model.TotalCount row(s) · page @Model.Page of @Model.TotalPages</small>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(Model.HasPrevious ? "" : "disabled")">
+                    <a class="page-link" asp-action="Show" asp-all-route-data="Route(Model.Page - 1)">Previous</a>
+                </li>
+                <li class="page-item active"><span class="page-link">@Model.Page</span></li>
+                <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                    <a class="page-link" asp-action="Show" asp-all-route-data="Route(Model.Page + 1)">Next</a>
+                </li>
+            </ul>
+        </div>
+    }
+    else
+    {
+        <div class="card-footer bg-white"><small class="text-muted">@Model.TotalCount row(s)</small></div>
+    }
+</div>
