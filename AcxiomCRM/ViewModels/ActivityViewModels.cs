@@ -47,9 +47,13 @@ public class ActivityFormViewModel : IValidatableObject
 public class ActivityListItem
 {
     public int ActivityId { get; set; }
+
+    [EnumDataType(typeof(ActivityType), ErrorMessage = "Select a valid type.")]
     public ActivityType ActivityType { get; set; }
     public string Subject { get; set; } = string.Empty;
     public DateTime ActivityDate { get; set; }
+
+    [EnumDataType(typeof(ActivityStatus), ErrorMessage = "Select a valid status.")]
     public ActivityStatus Status { get; set; }
     public string RelatedType { get; set; } = string.Empty;
     public string RelatedName { get; set; } = string.Empty;

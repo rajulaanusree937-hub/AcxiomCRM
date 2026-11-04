@@ -32,13 +32,19 @@ public class LeadFormViewModel
 
     [Required(ErrorMessage = "Lead Source is required.")]
     [Display(Name = "Lead Source")]
+
+    [EnumDataType(typeof(LeadSource), ErrorMessage = "Select a valid source.")]
     public LeadSource Source { get; set; } = LeadSource.Website;
 
     [Required(ErrorMessage = "Lead Status is required.")]
     [Display(Name = "Lead Status")]
+
+    [EnumDataType(typeof(LeadStatus), ErrorMessage = "Select a valid lead status.")]
     public LeadStatus Status { get; set; } = LeadStatus.New;
 
     [Required(ErrorMessage = "Priority is required.")]
+
+    [EnumDataType(typeof(Priority), ErrorMessage = "Select a valid priority.")]
     public Priority Priority { get; set; } = Priority.Medium;
 
     // Configured numeric range (17.6)

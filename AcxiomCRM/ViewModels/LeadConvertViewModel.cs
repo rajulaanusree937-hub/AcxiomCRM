@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using AcxiomCRM.Models.Validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace AcxiomCRM.ViewModels;
 
@@ -44,6 +45,8 @@ public class LeadConvertViewModel : IValidatableObject
     [Display(Name = "Probability (%)")]
     public int? Probability { get; set; } = 20;
 
+    [NotInPast("Expected Close Date cannot be in the past.",
+    DependentProperty = nameof(CreateOpportunity), InactiveValues = "false")]
     [DataType(DataType.Date)]
     [Display(Name = "Expected Close Date")]
     public DateTime? ExpectedCloseDate { get; set; }

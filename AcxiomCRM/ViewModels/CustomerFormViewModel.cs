@@ -43,6 +43,8 @@ public class CustomerFormViewModel
     public string? State { get; set; }
 
     [Required(ErrorMessage = "Status is required.")]
+
+    [EnumDataType(typeof(CustomerStatus), ErrorMessage = "Select a valid status.")]
     public CustomerStatus Status { get; set; } = CustomerStatus.Active;
 
     [StringLength(1000, ErrorMessage = "Notes cannot exceed 1000 characters.")]

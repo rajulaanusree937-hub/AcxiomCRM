@@ -1,8 +1,9 @@
-using AcxiomCRM.Services;
 using AcxiomCRM.Data;
 using AcxiomCRM.Models;
+using AcxiomCRM.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 
@@ -62,6 +63,7 @@ builder.Services.AddControllersWithViews(options =>
         .RequireAuthenticatedUser()
         .Build();
     options.Filters.Add(new AuthorizeFilter(requireLogin));
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());   // ← new line
 });
 
 // ---------- 3B: Role-based policies (7.1 permission matrix) ----------

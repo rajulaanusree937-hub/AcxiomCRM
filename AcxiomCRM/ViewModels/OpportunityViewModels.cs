@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using AcxiomCRM.Models.Validation;
+using System.ComponentModel.DataAnnotations;
 using AcxiomCRM.Models.Enums;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -34,11 +35,15 @@ public class OpportunityFormViewModel : IValidatableObject
     public int? Probability { get; set; } = 20;
 
     [Required(ErrorMessage = "Expected Close Date is required.")]
+    [NotInPast("Expected Close Date cannot be in the past.",
+    DependentProperty = nameof(Stage), InactiveValues = "Won,Lost")]
     [DataType(DataType.Date)]
     [Display(Name = "Expected Close Date")]
     public DateTime? ExpectedCloseDate { get; set; }
 
     [Required(ErrorMessage = "Stage is required.")]
+
+    [EnumDataType(typeof(OpportunityStage), ErrorMessage = "Select a valid stage.")]
     public OpportunityStage Stage { get; set; } = OpportunityStage.Qualification;
 
     [Display(Name = "Source")]

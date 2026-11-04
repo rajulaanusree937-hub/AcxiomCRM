@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using AcxiomCRM.Models.Validation;
+using System.ComponentModel.DataAnnotations;
 using AcxiomCRM.Models.Enums;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -20,6 +21,8 @@ public class FollowUpFormViewModel : IValidatableObject
     public int? OpportunityId { get; set; }
 
     [Required(ErrorMessage = "Follow-up date is required.")]
+    [NotInPast("Follow-up date cannot be earlier than today.",
+    DependentProperty = nameof(Status), InactiveValues = "Completed,Missed,Cancelled")]
     [Display(Name = "Follow-Up Date & Time")]
     public DateTime? FollowUpDate { get; set; }
 
@@ -29,6 +32,8 @@ public class FollowUpFormViewModel : IValidatableObject
 
     [Required(ErrorMessage = "Follow-up type is required.")]
     [Display(Name = "Type")]
+
+    [EnumDataType(typeof(FollowUpType), ErrorMessage = "Select a valid type.")]
     public FollowUpType FollowUpType { get; set; } = FollowUpType.Call;
 
 
@@ -36,6 +41,8 @@ public class FollowUpFormViewModel : IValidatableObject
     public string? Remarks { get; set; }
 
     [Required(ErrorMessage = "Status is required.")]
+
+    [EnumDataType(typeof(FollowUpStatus), ErrorMessage = "Select a valid status.")]
     public FollowUpStatus Status { get; set; } = FollowUpStatus.Planned;
 
     [Display(Name = "Assigned User")]
