@@ -14,6 +14,8 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+if (!builder.Environment.IsDevelopment())
+    builder.Configuration.AddJsonFile("appsettings.Secrets.json", optional: true, reloadOnChange: false);
 
 // ---------- Database ----------
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -141,7 +143,7 @@ builder.Services.AddScoped<IReportService, ReportService>();
 var app = builder.Build();
 
 // Create roles + test users (Step 2)
-await DbSeeder.SeedAsync(app.Services);
+await DbSeeder.SeedAsync(app.Services, includeDemoUsers: app.Environment.IsDevelopment());
 
 // ---------- HTTP pipeline ----------
 if (app.Environment.IsDevelopment())
