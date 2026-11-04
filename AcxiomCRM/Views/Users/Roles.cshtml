@@ -1,0 +1,74 @@
+﻿@model Dictionary<string, int>
+@{
+    ViewData["Title"] = "Roles & Permissions";
+
+    var matrix = new[]
+    {
+        new { Module = "Dashboard",        Admin = "Full", Manager = "Team",                       Sales = "Own/Assigned" },
+        new { Module = "Customers",        Admin = "Full", Manager = "Team/Business Scope",        Sales = "Own/Assigned" },
+        new { Module = "Leads",            Admin = "Full", Manager = "Team",                       Sales = "Own/Assigned" },
+        new { Module = "Follow-Ups",       Admin = "Full", Manager = "Team",                       Sales = "Own/Assigned" },
+        new { Module = "Activities",       Admin = "Full", Manager = "Team",                       Sales = "Own/Assigned" },
+        new { Module = "Opportunities",    Admin = "Full", Manager = "Team",                       Sales = "Own/Assigned" },
+        new { Module = "User Management",  Admin = "Full", Manager = "No",                         Sales = "No" },
+        new { Module = "Role Management",  Admin = "Full", Manager = "No",                         Sales = "No" },
+        new { Module = "Audit Log",        Admin = "Full", Manager = "No",                         Sales = "No" },
+        new { Module = "REST API",         Admin = "Authorized endpoints", Manager = "Authorized endpoints", Sales = "Authorized endpoints" },
+        new { Module = "Reports",          Admin = "All",  Manager = "Management/team reports",    Sales = "Own/assigned reports" }
+    };
+
+    string Cell(string v) => v switch
+    {
+        "No" => "text-danger",
+        "Full" or "All" => "text-success fw-semibold",
+        _ => ""
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0"><i class="bi bi-shield-check me-2"></i>Roles &amp; Permissions</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to users</a>
+</div>
+
+<div class="row g-3 mb-4">
+    @foreach (var role in AppRoles.All)
+    {
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <h2 class="h5 mb-1">@role</h2>
+                        <span class="badge bg-dark">@(Model.TryGetValue(role, out var c) ? c : 0) user(s)</span>
+                    </div>
+                    <small class="text-muted">
+                        @(role == AppRoles.Admin ? "Full administration, users, roles, audit logs, all CRM records and reports."
+                          : role == AppRoles.Manager ? "Monitors and manages team CRM data, pipeline, follow-ups and reports."
+                          : "Manages assigned customers, leads, opportunities, follow-ups and activities.")
+                    </small>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-white fw-semibold">Permission Matrix (7.1) — enforced on the server</div>
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead class="table-light">
+                <tr><th>Module</th><th>Admin</th><th>Manager</th><th>Sales Executive</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var row in matrix)
+                {
+                    <tr>
+                        <td class="fw-semibold">@row.Module</td>
+                        <td class="@Cell(row.Admin)">@row.Admin</td>
+                        <td class="@Cell(row.Manager)">@row.Manager</td>
+                        <td class="@Cell(row.Sales)">@row.Sales</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -90,6 +90,7 @@ builder.Services.AddScoped<IFollowUpService, FollowUpService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IOpportunityService, OpportunityService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 var app = builder.Build();
 
 // Create roles + test users (Part 2B)
