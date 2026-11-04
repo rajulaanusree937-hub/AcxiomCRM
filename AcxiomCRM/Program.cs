@@ -82,8 +82,10 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
-
 builder.Services.AddScoped<ILeadService, LeadService>();
+builder.Services.AddScoped<ILookupService, LookupService>();
+builder.Services.AddScoped<IFollowUpService, FollowUpService>();
+builder.Services.AddScoped<IActivityService, ActivityService>();
 var app = builder.Build();
 
 // Create roles + test users (Part 2B)

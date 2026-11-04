@@ -1,0 +1,76 @@
+﻿@model FollowUp
+@{
+    ViewData["Title"] = Model.Subject;
+    var isOpen = Model.Status is FollowUpStatus.Planned or FollowUpStatus.Missed;
+    var isOverdue = Model.Status == FollowUpStatus.Planned && Model.FollowUpDate < DateTime.Now;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+        <h1 class="h3 mb-0">@Model.Subject</h1>
+        <span class="badge bg-primary">@Model.Status</span>
+        <span class="badge bg-light text-dark border">@Model.FollowUpType</span>
+        @if (isOverdue)
+        {
+            <span class="badge bg-danger">Overdue</span>
+        }
+    </div>
+    <div class="d-flex gap-2">
+        @if (isOpen)
+        {
+            <form asp-action="Complete" asp-route-id="@Model.FollowUpId" method="post">
+                <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check2"></i> Mark Completed</button>
+            </form>
+            <a asp-action="Edit" asp-route-id="@Model.FollowUpId" class="btn btn-primary btn-sm"><i class="bi bi-pencil"></i> Edit / Reschedule</a>
+        }
+        <a asp-action="Delete" asp-route-id="@Model.FollowUpId" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Delete</a>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Date &amp; Time</dt>
+            <dd class="col-sm-9">@Model.FollowUpDate.ToString("dddd, dd MMM yyyy, hh:mm tt")</dd>
+
+            <dt class="col-sm-3">Customer</dt>
+            <dd class="col-sm-9">
+                @if (Model.Customer != null)
+                {
+                    <a asp-controller="Customers" asp-action="Details" asp-route-id="@Model.CustomerId">@Model.Customer.CustomerName</a>
+                }
+                else
+                {
+
+                    <span>—</span>
+                }
+            </dd>
+
+            <dt class="col-sm-3">Lead</dt>
+            <dd class="col-sm-9">
+                @if (Model.Lead != null)
+                {
+                    <a asp-controller="Leads" asp-action="Details" asp-route-id="@Model.LeadId">@Model.Lead.LeadName</a>
+                }
+                else
+                {
+
+                    <span>—</span>
+                }
+            </dd>
+
+            <dt class="col-sm-3">Opportunity</dt>
+            <dd class="col-sm-9">@(Model.Opportunity?.OpportunityName ?? "—")</dd>
+
+            <dt class="col-sm-3">Assigned To</dt>
+            <dd class="col-sm-9">@(ViewBag.AssignedToName ?? "Unassigned")</dd>
+
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9">@Model.CreatedDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</dd>
+
+            <dt class="col-sm-3">Remarks</dt>
+            <dd class="col-sm-9 mb-0">@(Model.Remarks ?? "—")</dd>
+        </dl>
+    </div>
+</div>

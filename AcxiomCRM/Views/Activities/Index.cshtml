@@ -1,0 +1,164 @@
+﻿@model ActivityListViewModel
+@{
+    ViewData["Title"] = "Activities";
+    var canSeeAll = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+
+    string TypeIcon(ActivityType t) => t switch
+    {
+        ActivityType.Call => "bi-telephone",
+        ActivityType.Meeting => "bi-people",
+        ActivityType.Email => "bi-envelope",
+        ActivityType.Task => "bi-check2-square",
+        _ => "bi-circle"
+    };
+
+    Dictionary<string, string> RouteFor(int page) => new()
+    {
+        ["search"] = Model.Search ?? "",
+        ["activityType"] = Model.ActivityType?.ToString() ?? "",
+        ["status"] = Model.Status?.ToString() ?? "",
+        ["assignedTo"] = Model.AssignedTo ?? "",
+        ["dateFrom"] = Model.DateFrom?.ToString("yyyy-MM-dd") ?? "",
+        ["dateTo"] = Model.DateTo?.ToString("yyyy-MM-dd") ?? "",
+        ["page"] = page.ToString()
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0"><i class="bi bi-telephone me-2"></i>Activities</h1>
+        <small class="text-muted">@Model.TotalCount activity(ies)</small>
+    </div>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Log Activity</a>
+</div>
+
+<form method="get" asp-action="Index" class="card card-body shadow-sm mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Search</label>
+            <input name="search" value="@Model.Search" class="form-control" placeholder="Subject or description" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Type</label>
+            <select name="activityType" class="form-select">
+                <option value="">All</option>
+                @foreach (var t in Enum.GetValues<ActivityType>())
+                {
+                    <option value="@t" selected="@(Model.ActivityType == t)">@t</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                @foreach (var s in Enum.GetValues<ActivityStatus>())
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@s</option>
+                }
+            </select>
+        </div>
+        @if (canSeeAll)
+        {
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Assigned User</label>
+                <select name="assignedTo" class="form-select">
+                    <option value="">Anyone</option>
+                    @foreach (var u in Model.AssignedUsers)
+                    {
+                        <option value="@u.Value" selected="@u.Selected">@u.Text</option>
+                    }
+                </select>
+            </div>
+        }
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">From</label>
+            <input type="date" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">To</label>
+            <input type="date" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-primary flex-fill"><i class="bi bi-search"></i> Filter</button>
+            <a asp-action="Index" class="btn btn-outline-secondary" title="Clear"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    @if (!Model.Items.Any())
+    {
+        <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>No activities found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Type</th>
+                        <th>Subject</th>
+                        <th>Date</th>
+                        <th>Related To</th>
+                        <th>Status</th>
+                        @if (canSeeAll)
+                        {
+                            <th>Assigned To</th>
+                        }
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model.Items)
+                    {
+                        <tr>
+                            <td class="text-nowrap"><i class="bi @TypeIcon(a.ActivityType) me-1"></i>@a.ActivityType</td>
+                            <td class="fw-semibold">@a.Subject</td>
+                            <td class="text-nowrap">@a.ActivityDate.ToString("dd MMM yyyy, hh:mm tt")</td>
+                            <td>
+                                <small class="text-muted">@a.RelatedType:</small>
+                                <a asp-controller="@a.RelatedController" asp-action="Details" asp-route-id="@a.RelatedId">@a.RelatedName</a>
+                            </td>
+                            <td>
+                                <span class="badge @(a.Status == ActivityStatus.Completed ? "bg-success" : a.Status == ActivityStatus.Cancelled ? "bg-secondary" : "bg-primary")">@a.Status</span>
+                            </td>
+                            @if (canSeeAll)
+                            {
+                                <td>@(a.AssignedToName ?? "Unassigned")</td>
+                            }
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@a.ActivityId" class="btn btn-sm btn-outline-secondary" title="Details"><i class="bi bi-eye"></i></a>
+                                <a asp-action="Edit" asp-route-id="@a.ActivityId" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="Delete" asp-route-id="@a.ActivityId" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                <small class="text-muted">Page @Model.Page of @Model.TotalPages</small>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.HasPrevious ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page - 1)">Previous</a>
+                    </li>
+                    @for (var p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(p)">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page + 1)">Next</a>
+                    </li>
+                </ul>
+            </div>
+        }
+    }
+</div>

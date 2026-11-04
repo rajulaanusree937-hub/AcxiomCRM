@@ -1,0 +1,77 @@
+﻿@model ActivityFormViewModel
+@{
+    var canAssign = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+}
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+<div class="card bg-light border-0 mb-3">
+    <div class="card-body">
+        <div class="fw-semibold mb-2">
+            Related to <span class="text-danger">*</span>
+            <small class="text-muted fw-normal">(customer or lead)</small>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="CustomerId" class="form-label"></label>
+                <select asp-for="CustomerId" class="form-select" asp-items="Model.Customers">
+                    <option value="">-- None --</option>
+                </select>
+                <span asp-validation-for="CustomerId" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="LeadId" class="form-label"></label>
+                <select asp-for="LeadId" class="form-select" asp-items="Model.Leads">
+                    <option value="">-- None --</option>
+                </select>
+                <span asp-validation-for="LeadId" class="text-danger small"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <label asp-for="ActivityType" class="form-label"></label> <span class="text-danger">*</span>
+        <select asp-for="ActivityType" class="form-select" asp-items="Html.GetEnumSelectList<ActivityType>()"></select>
+        <span asp-validation-for="ActivityType" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-8">
+        <label asp-for="Subject" class="form-label"></label> <span class="text-danger">*</span>
+        <input asp-for="Subject" class="form-control" maxlength="150" placeholder="e.g. Intro call with procurement" />
+        <span asp-validation-for="Subject" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="ActivityDate" class="form-label"></label> <span class="text-danger">*</span>
+        <input asp-for="ActivityDate" class="form-control" type="datetime-local" />
+        <span asp-validation-for="ActivityDate" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Status" class="form-label"></label> <span class="text-danger">*</span>
+        <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<ActivityStatus>()"></select>
+        <span asp-validation-for="Status" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="AssignedTo" class="form-label"></label>
+        @if (canAssign)
+        {
+            <select asp-for="AssignedTo" class="form-select" asp-items="Model.SalesExecutives">
+                <option value="">-- Owner of related record --</option>
+            </select>
+        }
+        else
+        {
+            <input class="form-control" value="You (auto-assigned)" disabled />
+        }
+    </div>
+
+    <div class="col-12">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="3" maxlength="1000"></textarea>
+        <span asp-validation-for="Description" class="text-danger small"></span>
+    </div>
+</div>

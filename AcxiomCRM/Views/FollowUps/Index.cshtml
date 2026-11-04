@@ -1,0 +1,215 @@
+﻿@model FollowUpListViewModel
+@{
+    ViewData["Title"] = "Follow-Ups";
+    var canSeeAll = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+    var currentUrl = Context.Request.Path + Context.Request.QueryString;
+
+    string StatusBadge(FollowUpStatus s) => s switch
+    {
+        FollowUpStatus.Planned => "bg-primary",
+        FollowUpStatus.Completed => "bg-success",
+        FollowUpStatus.Missed => "bg-warning text-dark",
+        FollowUpStatus.Cancelled => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
+    Dictionary<string, string> RouteFor(int page, string? view = null) => new()
+    {
+        ["view"] = view ?? Model.View,
+        ["search"] = Model.Search ?? "",
+        ["status"] = Model.Status?.ToString() ?? "",
+        ["assignedTo"] = Model.AssignedTo ?? "",
+        ["customerId"] = Model.CustomerId?.ToString() ?? "",
+        ["leadId"] = Model.LeadId?.ToString() ?? "",
+        ["dateFrom"] = Model.DateFrom?.ToString("yyyy-MM-dd") ?? "",
+        ["dateTo"] = Model.DateTo?.ToString("yyyy-MM-dd") ?? "",
+        ["page"] = page.ToString()
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0"><i class="bi bi-calendar-check me-2"></i>Follow-Ups</h1>
+        <small class="text-muted">@Model.TotalCount follow-up(s)</small>
+    </div>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Schedule Follow-Up</a>
+</div>
+
+@* ---------- Quick views (4.6: upcoming and overdue) ---------- *@
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(Model.View == "all" ? "active" : "")" asp-action="Index"
+           asp-all-route-data='RouteFor(1, "all")'>All</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.View == "upcoming" ? "active" : "")" asp-action="Index"
+           asp-all-route-data='RouteFor(1, "upcoming")'>Upcoming</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.View == "today" ? "active" : "")" asp-action="Index"
+           asp-all-route-data='RouteFor(1, "today")'>Today</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.View == "overdue" ? "active" : "")" asp-action="Index"
+           asp-all-route-data='RouteFor(1, "overdue")'>
+            Overdue
+            @if (Model.OverdueCount > 0)
+            {
+                <span class="badge bg-danger ms-1">@Model.OverdueCount</span>
+            }
+        </a>
+    </li>
+</ul>
+
+@* ---------- Filters (17.13: Date, Status, Assigned User, Related Customer/Lead) ---------- *@
+<form method="get" asp-action="Index" class="card card-body shadow-sm mb-3">
+    <input type="hidden" name="view" value="@Model.View" />
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Search</label>
+            <input name="search" value="@Model.Search" class="form-control" placeholder="Subject or remarks" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                @foreach (var s in Enum.GetValues<FollowUpStatus>())
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Customer</label>
+            <select name="customerId" class="form-select">
+                <option value="">Any</option>
+                @foreach (var c in Model.CustomerOptions)
+                {
+                    <option value="@c.Value" selected="@c.Selected">@c.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Lead</label>
+            <select name="leadId" class="form-select">
+                <option value="">Any</option>
+                @foreach (var l in Model.LeadOptions)
+                {
+                    <option value="@l.Value" selected="@l.Selected">@l.Text</option>
+                }
+            </select>
+        </div>
+        @if (canSeeAll)
+        {
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Assigned User</label>
+                <select name="assignedTo" class="form-select">
+                    <option value="">Anyone</option>
+                    @foreach (var u in Model.AssignedUsers)
+                    {
+                        <option value="@u.Value" selected="@u.Selected">@u.Text</option>
+                    }
+                </select>
+            </div>
+        }
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">From</label>
+            <input type="date" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">To</label>
+            <input type="date" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-primary flex-fill"><i class="bi bi-search"></i> Filter</button>
+            <a asp-action="Index" class="btn btn-outline-secondary" title="Clear"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    @if (!Model.Items.Any())
+    {
+        <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>No follow-ups found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Subject</th>
+                        <th>Type</th>
+                        <th>Related To</th>
+                        <th>Status</th>
+                        @if (canSeeAll)
+                        {
+                            <th>Assigned To</th>
+                        }
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Items)
+                    {
+                        <tr class="@(f.IsOverdue ? "table-danger" : "")">
+                            <td class="text-nowrap">
+                                @f.FollowUpDate.ToString("dd MMM yyyy, hh:mm tt")
+                                @if (f.IsOverdue)
+                                {
+                                    <span class="badge bg-danger ms-1">Overdue</span>
+                                }
+                            </td>
+                            <td class="fw-semibold">@f.Subject</td>
+                            <td>@f.FollowUpType</td>
+                            <td>
+                                <small class="text-muted">@f.RelatedType:</small>
+                                <a asp-controller="@f.RelatedController" asp-action="Details" asp-route-id="@f.RelatedId">@f.RelatedName</a>
+                            </td>
+                            <td><span class="badge @StatusBadge(f.Status)">@f.Status</span></td>
+                            @if (canSeeAll)
+                            {
+                                <td>@(f.AssignedToName ?? "Unassigned")</td>
+                            }
+                            <td class="text-end text-nowrap">
+                                @if (f.Status is FollowUpStatus.Planned or FollowUpStatus.Missed)
+                                {
+                                    <form asp-action="Complete" asp-route-id="@f.FollowUpId" asp-route-returnUrl="@currentUrl" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Mark completed"><i class="bi bi-check2"></i></button>
+                                    </form>
+                                    <a asp-action="Edit" asp-route-id="@f.FollowUpId" class="btn btn-sm btn-outline-primary" title="Edit / Reschedule"><i class="bi bi-pencil"></i></a>
+                                }
+                                <a asp-action="Details" asp-route-id="@f.FollowUpId" class="btn btn-sm btn-outline-secondary" title="Details"><i class="bi bi-eye"></i></a>
+                                <a asp-action="Delete" asp-route-id="@f.FollowUpId" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                <small class="text-muted">Page @Model.Page of @Model.TotalPages</small>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.HasPrevious ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page - 1)">Previous</a>
+                    </li>
+                    @for (var p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(p)">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page + 1)">Next</a>
+                    </li>
+                </ul>
+            </div>
+        }
+    }
+</div>
