@@ -1,0 +1,164 @@
+﻿@model LeadListViewModel
+@{
+    ViewData["Title"] = "Leads";
+    var canSeeAll = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+
+    string StatusBadge(LeadStatus s) => s switch
+    {
+        LeadStatus.New => "bg-primary",
+        LeadStatus.Contacted => "bg-info text-dark",
+        LeadStatus.Qualified => "bg-success",
+        LeadStatus.Unqualified => "bg-secondary",
+        LeadStatus.Converted => "bg-dark",
+        LeadStatus.Lost => "bg-danger",
+        _ => "bg-light text-dark"
+    };
+
+    Dictionary<string, string> RouteFor(int page) => new()
+    {
+        ["search"] = Model.Search ?? "",
+        ["status"] = Model.Status?.ToString() ?? "",
+        ["assignedTo"] = Model.AssignedTo ?? "",
+        ["sortBy"] = Model.SortBy,
+        ["page"] = page.ToString()
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0"><i class="bi bi-person-plus me-2"></i>Leads</h1>
+        <small class="text-muted">@Model.TotalCount lead(s) @(canSeeAll ? "" : "assigned to you")</small>
+    </div>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Lead</a>
+</div>
+
+@* ---------- Search & filters (17.13: Name, Company, Status, Assigned User) ---------- *@
+<form method="get" asp-action="Index" class="card card-body shadow-sm mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">Search</label>
+            <input name="search" value="@Model.Search" class="form-control" placeholder="Name, company, code, email, phone" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                @foreach (var s in Enum.GetValues<LeadStatus>())
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@s</option>
+                }
+            </select>
+        </div>
+        @if (canSeeAll)
+        {
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Assigned User</label>
+                <select name="assignedTo" class="form-select">
+                    <option value="">Anyone</option>
+                    @foreach (var u in Model.AssignedUsers)
+                    {
+                        <option value="@u.Value" selected="@(Model.AssignedTo == u.Value)">@u.Text</option>
+                    }
+                </select>
+            </div>
+        }
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Sort by</label>
+            <select name="sortBy" class="form-select">
+                <option value="newest" selected="@(Model.SortBy == "newest")">Newest</option>
+                <option value="oldest" selected="@(Model.SortBy == "oldest")">Oldest</option>
+                <option value="name" selected="@(Model.SortBy == "name")">Name A–Z</option>
+                <option value="value_desc" selected="@(Model.SortBy == "value_desc")">Highest value</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-primary flex-fill"><i class="bi bi-search"></i> Search</button>
+            <a asp-action="Index" class="btn btn-outline-secondary" title="Clear"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    @if (!Model.Items.Any())
+    {
+        <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>No leads found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Code</th>
+                        <th>Lead</th>
+                        <th>Company</th>
+                        <th>Source</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th class="text-end">Expected (₹)</th>
+                        @if (canSeeAll)
+                        {
+                            <th>Assigned To</th>
+                        }
+                        <th>Created</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in Model.Items)
+                    {
+                        <tr>
+                            <td><span class="badge bg-light text-dark border">@l.LeadCode</span></td>
+                            <td class="fw-semibold">@l.LeadName</td>
+                            <td>@(l.CompanyName ?? "—")</td>
+                            <td>@l.Source</td>
+                            <td><span class="badge @StatusBadge(l.Status)">@l.Status</span></td>
+                            <td>@l.Priority</td>
+                            <td class="text-end">@l.ExpectedValue.ToString("N2")</td>
+                            @if (canSeeAll)
+                            {
+                                <td>@(l.AssignedToName ?? "Unassigned")</td>
+                            }
+                            <td>@l.CreatedDate.ToLocalTime().ToString("dd MMM yyyy")</td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@l.LeadId" class="btn btn-sm btn-outline-secondary" title="Details"><i class="bi bi-eye"></i></a>
+                                @if (l.Status != LeadStatus.Converted)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@l.LeadId" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (l.Status == LeadStatus.Qualified)
+                                {
+                                    <a asp-action="Convert" asp-route-id="@l.LeadId" class="btn btn-sm btn-outline-success" title="Convert"><i class="bi bi-arrow-repeat"></i></a>
+                                }
+                                <a asp-action="Delete" asp-route-id="@l.LeadId" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                <small class="text-muted">Page @Model.Page of @Model.TotalPages</small>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.HasPrevious ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page - 1)">Previous</a>
+                    </li>
+                    @for (var p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(p)">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page + 1)">Next</a>
+                    </li>
+                </ul>
+            </div>
+        }
+    }
+</div>
