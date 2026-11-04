@@ -1,0 +1,171 @@
+﻿@model AuditLogListViewModel
+@{
+    ViewData["Title"] = "Audit Log";
+
+    string ActionBadge(string action) => action switch
+    {
+        "Create" or "Register" => "bg-success",
+        "Update" or "Convert" => "bg-primary",
+        "Delete" => "bg-danger",
+        "Login" or "Logout" => "bg-secondary",
+        "LoginFailed" or "Lockout" => "bg-warning text-dark",
+        _ => "bg-dark"
+    };
+
+    Dictionary<string, string> RouteFor(int page) => new()
+    {
+        ["userId"] = Model.UserId ?? "",
+        ["entityName"] = Model.EntityName ?? "",
+        ["action"] = Model.Action ?? "",
+        ["dateFrom"] = Model.DateFrom?.ToString("yyyy-MM-dd") ?? "",
+        ["dateTo"] = Model.DateTo?.ToString("yyyy-MM-dd") ?? "",
+        ["page"] = page.ToString()
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0"><i class="bi bi-journal-text me-2"></i>Audit Log</h1>
+        <small class="text-muted">@Model.TotalCount event(s) · read-only, append-only record of security and business activity</small>
+    </div>
+</div>
+
+<form method="get" asp-action="Index" class="card card-body shadow-sm mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">User</label>
+            <select name="userId" class="form-select">
+                <option value="">All users</option>
+                @foreach (var u in Model.Users)
+                {
+                    <option value="@u.Value" selected="@(Model.UserId == u.Value)">@u.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Module</label>
+            <select name="entityName" class="form-select">
+                <option value="">All modules</option>
+                @foreach (var m in Model.Modules)
+                {
+                    <option value="@m" selected="@(Model.EntityName == m)">@m</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Action</label>
+            <select name="action" class="form-select">
+                <option value="">All actions</option>
+                @foreach (var a in Model.Actions)
+                {
+                    <option value="@a" selected="@(Model.Action == a)">@a</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">From</label>
+            <input type="date" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">To</label>
+            <input type="date" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-1 d-flex gap-1">
+            <button type="submit" class="btn btn-outline-primary flex-fill" title="Filter"><i class="bi bi-search"></i></button>
+            <a asp-action="Index" class="btn btn-outline-secondary" title="Clear"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    @if (!Model.Items.Any())
+    {
+        <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-journal-x fs-1 d-block mb-2"></i>No audit events found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr>
+                        <th>When</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Module</th>
+                        <th>Record</th>
+                        <th>IP Address</th>
+                        <th class="text-end">Changes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model.Items)
+                    {
+                        var hasDetails = a.OldValue != null || a.NewValue != null;
+                        <tr>
+                            <td class="text-nowrap">@a.CreatedDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm:ss tt")</td>
+                            <td>
+                                @if (a.UserName != null)
+                                {
+                                    <div>@a.UserName</div><div class="text-muted">@a.UserEmail</div>
+                                }
+                                else
+                                {
+
+                                    <span class="text-muted">— (anonymous)</span>
+                                }
+                            </td>
+                            <td><span class="badge @ActionBadge(a.Action)">@a.Action</span></td>
+                            <td>@a.EntityName</td>
+                            <td>@(a.RecordId != null && a.RecordId.Length > 12 ? a.RecordId[..8] + "…" : a.RecordId ?? "—")</td>
+                            <td>@(a.IpAddress ?? "—")</td>
+                            <td class="text-end">
+                                @if (hasDetails)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#audit-@a.AuditLogId">
+                                        <i class="bi bi-chevron-down"></i> View
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                        @if (hasDetails)
+                        {
+                            <tr class="collapse" id="audit-@a.AuditLogId">
+                                <td colspan="7" class="bg-light">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <div class="fw-semibold text-danger small mb-1">Old value</div>
+                                            <pre class="bg-white border rounded p-2 small mb-0" style="white-space: pre-wrap;">@(a.OldValue ?? "—")</pre>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="fw-semibold text-success small mb-1">New value</div>
+                                            <pre class="bg-white border rounded p-2 small mb-0" style="white-space: pre-wrap;">@(a.NewValue ?? "—")</pre>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                <small class="text-muted">Page @Model.Page of @Model.TotalPages</small>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.HasPrevious ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page - 1)">Previous</a>
+                    </li>
+                    <li class="page-item active"><span class="page-link">@Model.Page</span></li>
+                    <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-all-route-data="RouteFor(Model.Page + 1)">Next</a>
+                    </li>
+                </ul>
+            </div>
+        }
+    }
+</div>

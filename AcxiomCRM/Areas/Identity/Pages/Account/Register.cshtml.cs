@@ -2,6 +2,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using AcxiomCRM.Models;
+using AcxiomCRM.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,23 +15,26 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IAuditService _audit;
         private readonly ILogger<RegisterModel> _logger;
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
+            IAuditService audit,
             ILogger<RegisterModel> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _audit = audit;
             _logger = logger;
         }
+
 
         [BindProperty]
         public InputModel Input { get; set; }
 
         public string ReturnUrl { get; set; }
-
 
         public class InputModel
         {
@@ -59,11 +63,11 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
 
         public void OnGet(string returnUrl = null)
         {
+
             ReturnUrl = returnUrl;
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
-
         {
             returnUrl ??= Url.Content("~/");
 
@@ -88,6 +92,12 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
                     await _userManager.AddToRoleAsync(user, AppRoles.SalesExecutive);
                     _logger.LogInformation("New user registered with SalesExecutive role.");
 
+                    // Audit (17.16) — password is NEVER logged
+                    await _audit.LogAsync(AuditActions.Register, "User", user.Id,
+                        newValue: new { user.Email, user.FullName, Role = AppRoles.SalesExecutive },
+                        userId: user.Id);
+
+
                     await _signInManager.SignInAsync(user, isPersistent: false);
                     return LocalRedirect(returnUrl);
                 }
@@ -95,7 +105,6 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
                 foreach (var error in result.Errors)
                     ModelState.AddModelError(string.Empty, error.Description);
             }
-
 
             return Page();
         }

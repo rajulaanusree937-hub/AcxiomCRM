@@ -191,7 +191,12 @@ namespace AcxiomCRM.Data.Migrations
 
                     b.HasKey("AuditLogId");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", t =>
+                        {
+                            t.HasTrigger("TR_AuditLogs_AppendOnly");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("AcxiomCRM.Models.Customer", b =>

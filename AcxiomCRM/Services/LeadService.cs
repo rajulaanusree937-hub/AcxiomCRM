@@ -27,13 +27,15 @@ public class LeadService : ILeadService
     private readonly ICurrentUserService _currentUser;
     private readonly UserManager<ApplicationUser> _userManager;
 
-    public LeadService(ApplicationDbContext db, ICurrentUserService currentUser,
-                       UserManager<ApplicationUser> userManager)
-    {
+    private readonly IAuditService _audit;
 
+    public LeadService(ApplicationDbContext db, ICurrentUserService currentUser,
+                       UserManager<ApplicationUser> userManager, IAuditService audit)
+    {
         _db = db;
         _currentUser = currentUser;
         _userManager = userManager;
+        _audit = audit;
     }
 
     // ===================== STATUS WORKFLOW (4.5, 17.7) =====================
@@ -344,6 +346,16 @@ public class LeadService : ILeadService
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
+
+            await _audit.LogAsync(AuditActions.Convert, "Lead", lead.LeadId.ToString(),
+                oldValue: new { Status = "Qualified" },
+                newValue: new
+                {
+                    Status = "Converted",
+                    CustomerId = customer.CustomerId,
+                    customer.CustomerCode,
+                    OpportunityCreated = model.CreateOpportunity
+                });
 
             return ServiceResult.Ok(customer.CustomerId);
         }

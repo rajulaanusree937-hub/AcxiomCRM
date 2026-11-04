@@ -1,6 +1,7 @@
 #nullable disable
 
 using System.ComponentModel.DataAnnotations;
+using AcxiomCRM.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -14,15 +15,18 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IAuditService _audit;
         private readonly ILogger<LoginModel> _logger;
 
         public LoginModel(
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
+            IAuditService audit,
             ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
             _userManager = userManager;
+            _audit = audit;
             _logger = logger;
         }
 
@@ -30,7 +34,6 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
         public InputModel Input { get; set; }
 
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
-
 
         public string ReturnUrl { get; set; }
 
@@ -57,13 +60,9 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
                 ModelState.AddModelError(string.Empty, ErrorMessage);
 
             returnUrl ??= Url.Content("~/");
-
-            // Clear any leftover external login cookie
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
-
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             ReturnUrl = returnUrl;
-
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
@@ -71,14 +70,12 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
             returnUrl ??= Url.Content("~/");
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
-            // Server-side validation
             if (!ModelState.IsValid)
                 return Page();
 
-            // Block deactivated accounts (4.7).
-            // Only reveal "deactivated" if the password is correct,
-            // so attackers can't use this to discover which emails exist.
             var user = await _userManager.FindByEmailAsync(Input.Email);
+
+            // Deactivated account (4.7)
             if (user != null && !user.IsActive)
             {
                 if (await _userManager.CheckPasswordAsync(user, Input.Password))
@@ -86,18 +83,19 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
                 else
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
 
-                _logger.LogWarning("Login attempt on a deactivated account.");
+                await _audit.LogAsync(AuditActions.LoginFailed, "User", user.Id,
+                    newValue: new { Input.Email, Reason = "Account deactivated" }, userId: user.Id);
                 return Page();
             }
 
-            // lockoutOnFailure: true -> 5 wrong passwords locks the account for 15 min (6.3)
+            // lockoutOnFailure: true -> 5 wrong passwords = 15 min lockout (6.3)
             var result = await _signInManager.PasswordSignInAsync(
                 Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
 
             if (result.Succeeded)
             {
-
                 _logger.LogInformation("User logged in.");
+                await _audit.LogAsync(AuditActions.Login, "User", user?.Id, userId: user?.Id);
                 return LocalRedirect(returnUrl);
             }
 
@@ -107,8 +105,14 @@ namespace AcxiomCRM.Areas.Identity.Pages.Account
             if (result.IsLockedOut)
             {
                 _logger.LogWarning("User account locked out.");
+                await _audit.LogAsync(AuditActions.Lockout, "User", user?.Id,
+                    newValue: new { Input.Email, Reason = "Too many failed attempts" }, userId: user?.Id);
                 return RedirectToPage("./Lockout");
             }
+
+            // Wrong email or password — the attempted email is logged, the password NEVER is
+            await _audit.LogAsync(AuditActions.LoginFailed, "User", user?.Id,
+                newValue: new { Input.Email, Reason = "Invalid credentials" }, userId: user?.Id);
 
             ModelState.AddModelError(string.Empty, "Invalid login attempt.");
             return Page();
