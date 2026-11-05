@@ -6,6 +6,9 @@ Built with **ASP.NET Core MVC (.NET 10)**, **ASP.NET Core Identity**, **Entity F
 
 ---
 
+### 🔗 Live Demo
+**https://acxiomcrm-anusree.runasp.net**
+
 ## 1. Tech Stack
 
 | Layer | Technology |
